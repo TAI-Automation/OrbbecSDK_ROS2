@@ -16,8 +16,8 @@
 
 #if __has_include(<cv_bridge/cv_bridge.hpp>)
 #include <cv_bridge/cv_bridge.hpp>
-#elif __has_include(<cv_bridge/cv_bridge.h>)
-#include <cv_bridge/cv_bridge.h>
+#else
+#include <cv_bridge/cv_bridge.hpp>
 #endif
 #include <sensor_msgs/image_encodings.hpp>
 
@@ -27,12 +27,18 @@
 
 namespace orbbec_camera {
 D2CViewer::D2CViewer(rclcpp::Node* const node, rmw_qos_profile_t rgb_qos,
-                     rmw_qos_profile_t depth_qos, bool use_intra_process)
-    : node_(node), logger_(rclcpp::get_logger("d2c_viewer")), is_active_(true) {
+                     rmw_qos_profile_t depth_qos)
+    : node_(node), logger_(rclcpp::get_logger("d2c_viewer")) {
+  auto modern_rgb_qos = rclcpp::QoS(
+    rclcpp::QoSInitialization::from_rmw(rgb_qos)
+  );
+  auto modern_depth_qos = rclcpp::QoS(
+    rclcpp::QoSInitialization::from_rmw(depth_qos)
+  );
   rgb_sub_ = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::Image>>(
-      node_, "color/image_raw", rgb_qos);
+  node_, "color/image_raw", modern_rgb_qos);
   depth_sub_ = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::Image>>(
-      node_, "depth/image_raw", depth_qos);
+      node_, "depth/image_raw", modern_depth_qos);
   sync_ = std::make_shared<message_filters::Synchronizer<MySyncPolicy>>(MySyncPolicy(10), *rgb_sub_,
                                                                         *depth_sub_);
   sync_->setMaxIntervalDuration(rclcpp::Duration::from_seconds(1.0));  // 1s

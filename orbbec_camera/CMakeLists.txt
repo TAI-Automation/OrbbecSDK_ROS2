@@ -95,20 +95,43 @@ if(USE_NV_HW_DECODER)
 endif()
 
 set(COMMON_INCLUDE_DIRS
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include> $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include> ${ORBBEC_INCLUDE_DIR} ${OpenCV_INCLUDED_DIRS} ${CMAKE_CURRENT_SOURCE_DIR}/tools
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
+  ${ORBBEC_INCLUDE_DIR}
+  ${OpenCV_INCLUDED_DIRS}
+  ${std_srvs_INCLUDE_DIRS}
+  ${orbbec_camera_msgs_INCLUDE_DIRS}
+  ${image_publisher_INCLUDE_DIRS}
+  ${backward_ros_INCLUDE_DIRS}
+  # ${camera_info_manager_INCLUDE_DIRS}
+  # ${rclcpp_components_INCLUDE_DIRS}
+  ${CMAKE_CURRENT_SOURCE_DIR}/tools
 )
 
 set(COMMON_LIBRARIES
-    ${ORBBEC_SDK_LIBRARIES}
-    ${OpenCV_LIBS}
-    Eigen3::Eigen
-    -lOrbbecSDK
-    -L${ORBBEC_LIBS_DIR}
-    Threads::Threads
-    -lrt
-    -ldw
-    yaml-cpp
+  ${ORBBEC_SDK_LIBRARIES}
+  ${std_srvs_LIBRARIES}
+  ${orbbec_camera_msgs_LIBRARIES}
+  ${image_publisher_LIBRARIES}
+  ${backward_ros_LIBRARIES}
+  # ${camera_info_manager_LIBRARIES}
+  # ${rclcpp_components_LIBRARIES}
+  ${OpenCV_LIBS}
+  rclcpp::rclcpp
+  image_transport::image_transport
+  cv_bridge::cv_bridge
+  camera_info_manager::camera_info_manager
+  diagnostic_updater::diagnostic_updater
+  ament_index_cpp::ament_index_cpp
+  Eigen3::Eigen
+  tf2_ros::tf2_ros
+  tf2_eigen::tf2_eigen
+  -lOrbbecSDK
+  -L${ORBBEC_LIBS_DIR}
+  Threads::Threads
+  -lrt
+  -ldw
 )
 if(USE_RK_HW_DECODER)
     list(APPEND COMMON_LIBRARIES ${RK_MPP_LIBRARIES} ${RGA_LIBRARIES})
@@ -166,51 +189,39 @@ if(USE_NV_HW_DECODER)
 endif()
 
 macro(add_orbbec_executable TARGET SOURCE)
-    add_executable(${TARGET} ${SOURCE})
-    target_include_directories(${TARGET} PUBLIC ${COMMON_INCLUDE_DIRS})
-    target_link_libraries(${TARGET} ${COMMON_LIBRARIES} ${PROJECT_NAME})
-    ament_target_dependencies(${TARGET} ${dependencies})
+  add_executable(${TARGET} ${SOURCE})
+  target_include_directories(${TARGET} PUBLIC ${COMMON_INCLUDE_DIRS})
+  target_link_libraries(${TARGET} ${COMMON_LIBRARIES} ${PROJECT_NAME} )
 endmacro()
 
 # Define library and nodes
 add_library(${PROJECT_NAME} SHARED ${SOURCE_FILES})
 
-ament_target_dependencies(${PROJECT_NAME} ${dependencies})
 target_include_directories(${PROJECT_NAME} PUBLIC ${COMMON_INCLUDE_DIRS})
 target_link_libraries(${PROJECT_NAME} ${COMMON_LIBRARIES})
 
-rclcpp_components_register_node(
-    ${PROJECT_NAME} PLUGIN "orbbec_camera::OBCameraNodeDriver" EXECUTABLE orbbec_camera_node
+rclcpp_components_register_node(${PROJECT_NAME}
+  PLUGIN "orbbec_camera::OBCameraNodeDriver"
+  EXECUTABLE orbbec_camera_node
 )
 # Add nodes using the macro
 add_orbbec_executable(list_devices_node tools/list_devices_node.cpp)
-add_orbbec_executable(list_depth_work_mode_node tools/list_depth_work_mode.cpp)
-add_orbbec_executable(list_camera_profile_mode_node tools/list_camera_profile.cpp)
-add_orbbec_executable(set_device_ip tools/set_device_ip.cpp)
+# add_orbbec_executable(list_depth_work_mode_node tools/list_depth_work_mode.cpp)
+# add_orbbec_executable(list_camera_profile_mode_node tools/list_camera_profile.cpp)
 add_orbbec_executable(topic_statistics_node tools/topic_statistics.cpp)
-add_orbbec_executable(ob_benchmark_node tools/ob_benchmark.cpp)
-add_orbbec_executable(435le_example_node examples/435le_new_interface/camera_example_node.cpp)
-add_orbbec_executable(service_benchmark_node scripts/service_benchmark_node.cpp)
-add_orbbec_executable(image_sync_example_node examples/multi_camera_time_sync/image_sync_example_node.cpp)
-
-install(
-  PROGRAMS
-    scripts/common_benchmark_node.py
-    scripts/service_benchmark_node.py
-  DESTINATION lib/${PROJECT_NAME}
-)
+# add_orbbec_executable(metadata_save_files_node tools/metadata_save_files.cpp)
+# add_orbbec_executable(metadata_export_files_node tools/metadata_export_files.cpp)
+# add_orbbec_executable(ob_benchmark_node tools/ob_benchmark.cpp)
 
 add_library(frame_latency SHARED tools/frame_latency.cpp)
 target_include_directories(frame_latency PUBLIC ${COMMON_INCLUDE_DIRS})
 target_link_libraries(frame_latency ${COMMON_LIBRARIES})
-ament_target_dependencies(frame_latency ${dependencies})
 
 rclcpp_components_register_node(frame_latency PLUGIN "orbbec_camera::FrameLatencyNode" EXECUTABLE frame_latency_node)
 
 add_library(start_benchmark SHARED tools/start_benchmark.cpp)
 target_include_directories(start_benchmark PUBLIC ${COMMON_INCLUDE_DIRS})
 target_link_libraries(start_benchmark ${COMMON_LIBRARIES})
-ament_target_dependencies(start_benchmark ${dependencies})
 
 rclcpp_components_register_node(
     start_benchmark PLUGIN "orbbec_camera::tools::StartBenchmark" EXECUTABLE start_benchmark_node
@@ -219,7 +230,6 @@ rclcpp_components_register_node(
 add_library(multi_save_rgbir SHARED tools/multi_save_rgbir.cpp src/utils.cpp)
 target_include_directories(multi_save_rgbir PUBLIC ${COMMON_INCLUDE_DIRS})
 target_link_libraries(multi_save_rgbir ${COMMON_LIBRARIES})
-ament_target_dependencies(multi_save_rgbir ${dependencies})
 
 rclcpp_components_register_node(
     multi_save_rgbir PLUGIN "orbbec_camera::tools::MultiCameraSubscriber" EXECUTABLE multi_save_rgbir_node
@@ -251,8 +261,14 @@ if(DEFINED ENV{BUILDING_PACKAGE})
     install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/scripts/99-obsensor-libusb.rules DESTINATION /etc/udev/rules.d)
 endif()
 
-install(TARGETS list_devices_node list_depth_work_mode_node list_camera_profile_mode_node topic_statistics_node  service_benchmark_node ob_benchmark_node 435le_example_node set_device_ip image_sync_example_node DESTINATION lib/${PROJECT_NAME}/
-)
+install(TARGETS list_devices_node
+  # list_depth_work_mode_node
+  # list_camera_profile_mode_node
+  topic_statistics_node
+  # metadata_save_files_node
+  # metadata_export_files_node
+  # ob_benchmark_node
+  DESTINATION lib/${PROJECT_NAME}/)
 
 if(BUILD_TESTING)
     find_package(ament_lint_auto REQUIRED)

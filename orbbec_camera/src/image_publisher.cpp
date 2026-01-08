@@ -16,7 +16,7 @@
 
 namespace orbbec_camera {
 
-// --- image_rcl_publisher implementation ---
+// --- image_rcl_publisher implementation --- 
 image_rcl_publisher::image_rcl_publisher(rclcpp::Node& node, const std::string& topic_name,
                                          const rmw_qos_profile_t& qos) {
   image_publisher_impl = node.create_publisher<sensor_msgs::msg::Image>(
@@ -35,8 +35,13 @@ size_t image_rcl_publisher::get_subscription_count() const {
 image_transport_publisher::image_transport_publisher(rclcpp::Node& node,
                                                      const std::string& topic_name,
                                                      const rmw_qos_profile_t& qos) {
+  auto modern_qos = rclcpp::QoS(
+    rclcpp::QoSInitialization::from_rmw(qos)
+  );
+
   image_publisher_impl = std::make_shared<image_transport::Publisher>(
-      image_transport::create_publisher(&node, topic_name, qos));
+    image_transport::create_publisher(node, topic_name, modern_qos)
+  );
 }
 void image_transport_publisher::publish(sensor_msgs::msg::Image::UniquePtr image_ptr) {
   image_publisher_impl->publish(*image_ptr);
