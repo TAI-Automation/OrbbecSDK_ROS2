@@ -27,7 +27,7 @@
 
 namespace orbbec_camera {
 D2CViewer::D2CViewer(rclcpp::Node* const node, rmw_qos_profile_t rgb_qos,
-                     rmw_qos_profile_t depth_qos)
+                     rmw_qos_profile_t depth_qos, bool use_intra_process)
     : node_(node), logger_(rclcpp::get_logger("d2c_viewer")) {
   auto modern_rgb_qos = rclcpp::QoS(
     rclcpp::QoSInitialization::from_rmw(rgb_qos)
