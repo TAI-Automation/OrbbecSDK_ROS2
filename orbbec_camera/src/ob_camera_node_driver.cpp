@@ -90,10 +90,17 @@ backward::SignalHandling OBCameraNodeDriver::sh;
 OBCameraNodeDriver::OBCameraNodeDriver(const rclcpp::NodeOptions &node_options)
     : Node("orbbec_camera_node", "/", node_options),
       node_options_(node_options),
-      config_path_(ament_index_cpp::get_package_share_directory("orbbec_camera") +
-                   "/config/OrbbecSDKConfig_v2.0.xml"),
+      config_path_([]() {
+        std::filesystem::path share_dir;
+        ament_index_cpp::get_package_share_directory("orbbec_camera", share_dir);
+        return (share_dir / "config" / "OrbbecSDKConfig_v2.0.xml").string();
+      }()),
       logger_(this->get_logger()),
-      extension_path_(ament_index_cpp::get_package_prefix("orbbec_camera") + "/lib/extensions") {
+      extension_path_([]() {
+        std::filesystem::path prefix_dir;
+        ament_index_cpp::get_package_prefix("orbbec_camera", prefix_dir);
+        return (prefix_dir / "lib" / "extensions").string();
+      }()) {
   node_name_ = "orbbec_camera_node";
   init();
 }
@@ -102,10 +109,17 @@ OBCameraNodeDriver::OBCameraNodeDriver(const std::string &node_name, const std::
                                        const rclcpp::NodeOptions &node_options)
     : Node(node_name, ns, node_options),
       node_options_(node_options),
-      config_path_(ament_index_cpp::get_package_share_directory("orbbec_camera") +
-                   "/config/OrbbecSDKConfig_v2.0.xml"),
+      config_path_([]() {
+        std::filesystem::path share_dir;
+        ament_index_cpp::get_package_share_directory("orbbec_camera", share_dir);
+        return (share_dir / "config" / "OrbbecSDKConfig_v2.0.xml").string();
+      }()),
       logger_(this->get_logger()),
-      extension_path_(ament_index_cpp::get_package_prefix("orbbec_camera") + "/lib/extensions") {
+      extension_path_([]() {
+        std::filesystem::path prefix_dir;
+        ament_index_cpp::get_package_prefix("orbbec_camera", prefix_dir);
+        return (prefix_dir / "lib" / "extensions").string();
+      }()) {
   node_name_ = node_name;
   init();
 }
